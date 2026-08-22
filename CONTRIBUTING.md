@@ -16,19 +16,33 @@ solo-maintained project, so the workflow is deliberately lightweight.
 
 The maintainer reviews and merges all PRs.
 
-## Adding a new plugin
+## Adding a new asset
 
-1. Create `plugins/<name>/` with its own `.claude-plugin/plugin.json`
+This repo holds three categories, each with its own directory and its own
+conventions — see each category's own `README.md` for the exact steps:
+
+- **Claude Code plugin** → [`claude-plugins/README.md`](claude-plugins/README.md) (see below)
+- **MCP server** → [`mcp-servers/README.md`](mcp-servers/README.md)
+- **Skill for another agent** → [`agent-skills/README.md`](agent-skills/README.md)
+
+All three end the same way: add a row to the relevant table in the root
+`README.md`, and run `python3 scripts/validate_marketplace.py` before
+pushing (it only validates the Claude Code plugin category — the other two
+have no shared manifest format to check).
+
+### Adding a new Claude Code plugin
+
+1. Create `claude-plugins/<name>/` with its own `.claude-plugin/plugin.json`
    (`name`, `version` starting at `0.1.0`, `description`, `author`, `license`)
    and the plugin's content (`skills/`, `commands/`, `hooks/`, …).
 2. Add an entry to `.claude-plugin/marketplace.json`'s `plugins` array:
-   `{"name": "<name>", "source": "./plugins/<name>", "description": "…"}`.
+   `{"name": "<name>", "source": "./claude-plugins/<name>", "description": "…"}`.
 3. Add a row to the plugin table in `README.md`.
 4. Run `python3 scripts/validate_marketplace.py` before pushing.
 
 A plugin with its own release cadence can add a `CHANGELOG.md` under
-`plugins/<name>/` once the root `CHANGELOG.md` gets too crowded to track it —
-not needed while the marketplace is small.
+`claude-plugins/<name>/` once the root `CHANGELOG.md` gets too crowded to
+track it — not needed while the marketplace is small.
 
 ## Validation
 

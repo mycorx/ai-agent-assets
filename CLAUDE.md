@@ -1,26 +1,36 @@
 # CLAUDE.md — ai-agent-assets
 
 Project instructions for agentic coding in this repository. This repo is a
-**Claude Code plugin marketplace**: a `.claude-plugin/marketplace.json` at the
-root cataloging plugins that live locally under `plugins/<name>/`, each with
-its own `.claude-plugin/plugin.json`.
+general collection of AI-agent assets, organized into three top-level
+categories:
 
-## Distribution model
+- `claude-plugins/` — Claude Code plugins, cataloged by the root
+  `.claude-plugin/marketplace.json`
+- `mcp-servers/` — standalone MCP servers, agent-agnostic
+- `agent-skills/` — skills for agents other than Claude Code
+
+Each category is self-contained with its own conventions — see that
+category's own `README.md`. Only `claude-plugins/` has a shared manifest
+format and CI validation; the other two are freeform.
+
+## Distribution model (Claude Code plugins)
 
 Unlike a single-plugin repo distributed through a separate external catalog,
-this repo *is* the marketplace. `/plugin marketplace add mycorx/ai-agent-assets`
-clones the whole repo and resolves each plugin's `./plugins/<name>` source
-directly — there is **no `release` branch, no fast-forward step, and no
-version-bump gate before something ships**. Merging a plugin change to `main`
-is what makes it installable. Keep that in mind: `main` must always be in a
-state you're comfortable users installing from.
+this repo *is* the marketplace for its `claude-plugins/` category.
+`/plugin marketplace add mycorx/ai-agent-assets` clones the whole repo and
+resolves each plugin's `./claude-plugins/<name>` source directly — there is
+**no `release` branch, no fast-forward step, and no version-bump gate before
+something ships**. Merging a plugin change to `main` is what makes it
+installable. Keep that in mind: `main` must always be in a state you're
+comfortable users installing from.
 
-## Adding or changing a plugin
+## Adding or changing an asset
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the mechanical steps. In short:
-each plugin is self-contained under `plugins/<name>/`, versioned independently
-in its own `plugin.json`, and listed once in `.claude-plugin/marketplace.json`.
-Run `python3 scripts/validate_marketplace.py` before pushing.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the mechanical steps, split by
+category. For Claude Code plugins specifically: each plugin is self-contained
+under `claude-plugins/<name>/`, versioned independently in its own
+`plugin.json`, and listed once in `.claude-plugin/marketplace.json`. Run
+`python3 scripts/validate_marketplace.py` before pushing.
 
 ## Git & merge conventions
 

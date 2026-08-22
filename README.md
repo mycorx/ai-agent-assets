@@ -1,11 +1,12 @@
 # ai-agent-assets
 
-A Claude Code plugin marketplace — a growing collection of skills and plugins
-for AI-agent-assisted development.
+A growing collection of assets for AI-agent-assisted development: Claude Code
+plugins today, with room for MCP servers and skills for other agents as they
+show up.
 
-## Install
+## Claude Code plugins
 
-From within Claude Code:
+Install from within Claude Code:
 
 ```
 /plugin marketplace add mycorx/ai-agent-assets
@@ -13,33 +14,42 @@ From within Claude Code:
 ```
 
 Run `/plugin marketplace update` to pick up new plugin versions. Plugins are
-resolved directly from this repo's `main` branch — there's no separate
-release branch to fast-forward.
-
-## Plugins
+resolved directly from this repo's `main` branch via
+[`.claude-plugin/marketplace.json`](.claude-plugin/marketplace.json) — there's
+no separate release branch to fast-forward.
 
 | Plugin | Description |
 | --- | --- |
-| [`git-rewrite-email`](plugins/git-rewrite-email) | Rewrite Git history to remove an unwanted email, auto-install `filter-repo` if missing, and optionally restore the `origin` remote. |
+| [`git-rewrite-email`](claude-plugins/git-rewrite-email) | Rewrite Git history to remove an unwanted email, auto-install `filter-repo` if missing, and optionally restore the `origin` remote. |
+
+## MCP servers
+
+Nothing here yet. See [`mcp-servers/`](mcp-servers) for how a new one gets added.
+
+## Skills for other agents
+
+Nothing here yet. See [`agent-skills/`](agent-skills) for how a new one gets added.
 
 ## Repo layout
 
 ```
-.claude-plugin/marketplace.json   # catalogs every plugin below
-plugins/<name>/
-  .claude-plugin/plugin.json      # that plugin's own manifest
-  skills/, commands/, hooks/…     # the plugin's actual content
+.claude-plugin/marketplace.json     # Claude Code marketplace catalog (fixed path, Claude Code requirement)
+claude-plugins/<name>/
+  .claude-plugin/plugin.json        # that plugin's own manifest
+  skills/, commands/, hooks/…       # the plugin's actual content
+mcp-servers/<name>/                 # standalone MCP servers, agent-agnostic
+agent-skills/<agent>/<name>/        # skills for agents other than Claude Code
 ```
 
-Each plugin is self-contained under `plugins/<name>/` and versioned
-independently via its own `plugin.json`. See [CONTRIBUTING.md](CONTRIBUTING.md)
-for how to add a new one.
+Each category is self-contained and versioned independently. See
+[CONTRIBUTING.md](CONTRIBUTING.md) for how to add to any of them.
 
 ## Validation
 
 `scripts/validate_marketplace.py` checks that `marketplace.json` and every
-cataloged plugin's manifest, skill/command frontmatter, and README links are
-well-formed. It runs in CI on every push and PR; run it locally with:
+cataloged Claude Code plugin's manifest, skill/command frontmatter, and README
+links are well-formed. It runs in CI on every push and PR; run it locally
+with:
 
 ```
 python3 scripts/validate_marketplace.py
