@@ -1,0 +1,62 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", ":configMigration"],
+  "schedule": ["at any time"],
+  "labels": ["dependency"],
+  // images and actions pinned with digests
+  "pinDigests": true,
+  // Wait until required status checks pass before opening the PR (reduces noisy failing PRs)
+  "prCreation": "not-pending",
+  "minimumReleaseAgeBehaviour": "timestamp-optional", // transient updates do not have timestamps
+  // Catch-all: every package waits 3 days after release before Renovate proposes an update.
+  "minimumReleaseAge": "3 days",
+  "internalChecksFilter": "strict",
+  "osvVulnerabilityAlerts": true,
+  "vulnerabilityAlerts": { "enabled": true },
+  "dependencyDashboardOSVVulnerabilitySummary": "all",
+  "timezone": "Australia/Brisbane",
+  "dependencyDashboard": true,
+  "prConcurrentLimit": 5,
+
+  // Latest *stable* only — no beta, RC, alpha or preview, ever.
+  "ignoreUnstable": true,
+  "respectLatest": true,
+
+  "packageRules": [
+    {
+      "description": "github-actions: group minor+patch together, run weekly",
+      "matchManagers": ["github-actions"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "actions dependencies",
+      "groupSlug": "actions-dependencies",
+      "commitMessageTopic": "github-actions {{updateType}} dependencies",
+      "schedule": ["before 8am on monday"],
+    },
+    {
+      "description": "Automerge anything that is NOT a major update",
+      "matchUpdateTypes": ["minor", "patch", "pin", "digest", "pinDigest"],
+      "automerge": true,
+      "platformAutomerge": false
+    },
+    {
+      "description": "Label major updates",
+      "matchUpdateTypes": ["major"],
+      "addLabels": ["semver:major"]
+    },
+    {
+      "description": "Label minor updates",
+      "matchUpdateTypes": ["minor"],
+      "addLabels": ["semver:minor"]
+    },
+    {
+      "description": "Label patch updates",
+      "matchUpdateTypes": ["patch"],
+      "addLabels": ["semver:patch"]
+    },
+    {
+      "description": "Label pin and digest updates",
+      "matchUpdateTypes": ["pin", "digest", "pinDigest"],
+      "addLabels": ["semver:none"]
+    }
+  ]
+}
