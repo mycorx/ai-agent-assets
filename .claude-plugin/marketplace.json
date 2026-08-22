@@ -1,0 +1,14 @@
+{
+  "name": "ai-agent-assets",
+  "description": "Collection of Claude Code skills and plugins.",
+  "owner": {
+    "name": "mycorx"
+  },
+  "plugins": [
+    {
+      "name": "git-rewrite-email",
+      "source": "./plugins/git-rewrite-email",
+      "description": "Rewrite Git history to remove an unwanted email, auto-install filter-repo if missing, and optionally restore the origin remote."
+    }
+  ]
+}

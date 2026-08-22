@@ -1,0 +1,22 @@
+# Dependabot — keeps this repo's GitHub Actions current.
+#
+# This repo has no language/container manifests, so github-actions is the only
+# ecosystem to manage. 7-day cooldown on version updates; security updates are a
+# separate always-on lane. No auto-merge workflow — action bumps are infrequent
+# and reviewed by hand.
+version: 2
+
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+    cooldown:
+      default-days: 7
+    groups:
+      actions-minor-patch:
+        applies-to: version-updates
+        patterns: ["*"]
+        update-types: ["minor", "patch"]

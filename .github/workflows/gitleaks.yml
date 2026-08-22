@@ -1,0 +1,23 @@
+name: gitleaks
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  gitleaks:
+    runs-on: ubuntu-latest
+    container:
+      image: zricethezav/gitleaks:latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+      - name: gitleaks detect
+        run: |
+          gitleaks detect \
+            --source . \
+            --baseline-path .gitleaks-baseline.json \
+            --redact \
+            --exit-code 1 \
+            --verbose

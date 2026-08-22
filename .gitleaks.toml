@@ -1,0 +1,24 @@
+# Gitleaks configuration for the `ai-agent-assets` repo.
+#
+# CRITICAL: `[extend] useDefault = true` keeps gitleaks' full upstream ruleset.
+# A custom config REPLACES the built-in rules unless it extends them, so without
+# this the scanner would detect nothing. Everything below only *adds* allowlists
+# (false-positive suppression); it never removes a rule.
+#
+# See CI: .github/workflows/gitleaks.yml (gitleaks auto-loads this file at the
+# scan root). Genuine historical findings would be suppressed via
+# .gitleaks-baseline.json, not here — this file is only for intentional
+# *.example template files (no [placeholder: ...] convention in this repo).
+
+title = "ai-agent-assets repo gitleaks config"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "*.example template files"
+# *.example / *.example.* template files ship fake values by design.
+paths = [
+  '''\.example$''',
+  '''\.example\.''',
+]
