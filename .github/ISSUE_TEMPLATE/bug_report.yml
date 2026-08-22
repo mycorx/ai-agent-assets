@@ -1,0 +1,28 @@
+name: Bug report
+description: Something in this marketplace isn't working as expected.
+labels: ["bug"]
+body:
+  - type: input
+    id: plugin
+    attributes:
+      label: Plugin
+      description: Which plugin is affected? (e.g. git-rewrite-email)
+      placeholder: git-rewrite-email
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+      placeholder: Steps to reproduce, expected vs. actual behavior.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Environment
+      description: Claude Code version, plugin version, and OS.
+      placeholder: "e.g. Claude Code 2.x, git-rewrite-email 0.1.0, macOS 15"
+    validations:
+      required: false

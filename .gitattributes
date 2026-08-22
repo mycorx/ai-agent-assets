@@ -1,0 +1,6 @@
+# core.autocrlf cannot be relied on here: on the development machine a global
+# `false` overrides a system `true`, so with the effective value `false` git
+# normalises nothing on `add` and CRLF that reaches the working tree gets
+# committed verbatim. Normalise every text file to LF in the repo and on
+# checkout, regardless of platform or any per-machine autocrlf setting.
+* text=auto eol=lf

@@ -1,0 +1,11 @@
+{
+  "name": "git-rewrite-email",
+  "version": "0.1.0",
+  "description": "Rewrite Git history to remove an unwanted email, auto-install filter-repo if missing, and optionally restore the origin remote.",
+  "author": {
+    "name": "mycorx"
+  },
+  "homepage": "https://github.com/mycorx/ai-agent-assets",
+  "repository": "https://github.com/mycorx/ai-agent-assets",
+  "license": "Apache-2.0"
+}
