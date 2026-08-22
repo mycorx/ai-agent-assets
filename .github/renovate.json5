@@ -36,7 +36,7 @@
       "description": "Automerge anything that is NOT a major update",
       "matchUpdateTypes": ["minor", "patch", "pin", "digest", "pinDigest"],
       "automerge": true,
-      "platformAutomerge": false
+      "platformAutomerge": true
     },
     {
       "description": "Label major updates",
