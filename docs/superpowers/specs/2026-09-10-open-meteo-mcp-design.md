@@ -271,10 +271,18 @@ server also means adding a row to the table in the root `README.md` —
 which currently reads "Nothing here yet." This would be the category's
 first entry.
 
-## Out of scope but worth recording
+## A prerequisite, handled separately
 
-`ai-agent-assets` has **no `.gitignore`**. Not this spec's problem, but
-it means a worktree or build directory created inside the repo is
-tracked by default, and a Rust crate here will produce `target/`. That
-wants fixing before, or as part of, the first code landing in
-`mcp-servers/`.
+`ai-agent-assets` had **no `.gitignore`**, which was survivable while
+every tracked file was markdown, yaml or a Python script — and is not,
+once a Rust crate under `mcp-servers/` starts producing `target/`.
+
+Fixed on its own branch (`chore/add-gitignore`) rather than here, so
+this spec stays a spec and the ignore rules can land ahead of any code.
+That branch also covers Python bytecode, `node_modules/`, local
+worktrees, editor and agent state, and a secrets block in front of
+gitleaks. Two choices in it matter to this server: `target/` is
+unanchored, because there is no Cargo workspace and each server builds
+its own, and `Cargo.lock` is deliberately **not** ignored, since this
+crate produces a binary and the committed lockfile is what makes its
+build reproducible.
