@@ -1,0 +1,39 @@
+# Rust — for the crates under mcp-servers/. Unanchored so it catches a
+# `target/` inside each crate, not just one at the repo root; there is no
+# Cargo workspace here and each server builds on its own.
+# Cargo.lock is deliberately NOT ignored: these crates build binaries, and a
+# committed lockfile is what makes a build reproducible.
+target/
+**/*.rs.bk
+
+# Python — scripts/validate_marketplace.py and anything that joins it.
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Node — nothing uses it today, but a plugin or skill that does should not
+# have to remember to add this.
+node_modules/
+
+# Local git worktrees. Kept inside the repo by some workflows; tracking them
+# would commit an entire second checkout.
+.worktrees/
+worktrees/
+
+# Secrets. gitleaks in CI is the real gate (.github/workflows/gitleaks.yml);
+# this is the cheap layer in front of it that stops the file existing in a
+# commit at all.
+.env
+.env.*
+*.key
+*.pem
+
+# Per-developer editor and agent state, not project configuration.
+.claude/settings.local.json
+.idea/
+*.swp
+
+# OS noise.
+.DS_Store
+Thumbs.db
