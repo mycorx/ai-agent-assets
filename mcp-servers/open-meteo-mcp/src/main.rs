@@ -21,3 +21,51 @@ async fn main() -> anyhow::Result<()> {
     service.waiting().await?;
     Ok(())
 }
+
+#[cfg(test)]
+mod manifest_tests {
+    /// The four checks `uia` applies to a bundle, asserted against the
+    /// manifest this repo ships, so a careless edit fails here rather than
+    /// at install time on somebody's machine.
+    #[test]
+    fn the_manifest_satisfies_uias_bundle_checks() {
+        let raw = include_str!("../manifest.json");
+        let m: serde_json::Value = serde_json::from_str(raw).expect("manifest.json is valid JSON");
+
+        assert_eq!(m["server"]["type"], "binary");
+
+        let name = m["name"].as_str().unwrap();
+        assert!(
+            name.chars()
+                .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-'),
+            "server names prefix tool names: {name}"
+        );
+
+        const SCRIPT_EXTENSIONS: &[&str] = &[
+            "py", "js", "mjs", "cjs", "ts", "rb", "sh", "bash", "ps1", "bat", "cmd", "php", "pl",
+        ];
+        let mut commands = vec![m["server"]["mcp_config"]["command"].as_str().unwrap()];
+        for (_, over) in m["server"]["mcp_config"]["platform_overrides"]
+            .as_object()
+            .unwrap()
+        {
+            commands.push(over["command"].as_str().unwrap());
+        }
+
+        for command in commands {
+            assert!(
+                command.starts_with("${__dirname}/"),
+                "must be bundle-relative: {command}"
+            );
+            assert!(
+                !command.contains(".."),
+                "must not escape the bundle: {command}"
+            );
+            let ext = command.rsplit_once('.').map(|(_, e)| e).unwrap_or("");
+            assert!(
+                !SCRIPT_EXTENSIONS.contains(&ext),
+                "{command} ends in a script extension"
+            );
+        }
+    }
+}
