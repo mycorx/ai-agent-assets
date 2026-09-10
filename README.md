@@ -24,7 +24,12 @@ no separate release branch to fast-forward.
 
 ## MCP servers
 
-Nothing here yet. See [`mcp-servers/`](mcp-servers) for how a new one gets added.
+Standalone MCP servers, usable by any MCP-capable agent. See
+[`mcp-servers/`](mcp-servers) for how a new one gets added.
+
+| Server | Description |
+| --- | --- |
+| [`open-meteo-mcp`](mcp-servers/open-meteo-mcp) | Current conditions and a short forecast for a place, from Open-Meteo. Free tier is non-commercial only. |
 
 ## Skills for other agents
 
