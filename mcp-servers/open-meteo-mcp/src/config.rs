@@ -5,14 +5,19 @@
 pub const DEFAULT_FORECAST_URL: &str = "https://api.open-meteo.com/v1/forecast";
 pub const DEFAULT_GEOCODING_URL: &str = "https://geocoding-api.open-meteo.com/v1/search";
 
-// Temporary: fields are only taken by reference in the Task-1 stub
-// `get_weather`, never field-accessed, until Task 2 reads them.
-#[allow(dead_code)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Units {
+    Metric,
+    Imperial,
+}
+
 #[derive(Debug, Clone)]
 pub struct Config {
     pub default_location: Option<String>,
     pub forecast_url: String,
     pub geocoding_url: String,
+    pub units: Units,
+    pub api_key: Option<String>,
 }
 
 impl Config {
@@ -23,12 +28,20 @@ impl Config {
     /// The lookup is a parameter, not `std::env`, so tests can vary it
     /// without mutating shared process state.
     pub fn from_vars(get: impl Fn(&str) -> Option<String>) -> Self {
+        // Exact match only: a wrong value falls back to metric rather than
+        // being guessed at, because the wrong units are a silent wrong answer.
+        let units = match get("OPEN_METEO_UNITS").as_deref() {
+            Some("imperial") => Units::Imperial,
+            _ => Units::Metric,
+        };
         Config {
             default_location: get("OPEN_METEO_DEFAULT_LOCATION").filter(|v| !v.trim().is_empty()),
             forecast_url: get("OPEN_METEO_BASE_URL")
                 .unwrap_or_else(|| DEFAULT_FORECAST_URL.to_string()),
             geocoding_url: get("OPEN_METEO_GEOCODING_URL")
                 .unwrap_or_else(|| DEFAULT_GEOCODING_URL.to_string()),
+            units,
+            api_key: get("OPEN_METEO_API_KEY").filter(|v| !v.trim().is_empty()),
         }
     }
 }
@@ -64,5 +77,25 @@ mod tests {
         let c =
             Config::from_vars(|k| (k == "OPEN_METEO_DEFAULT_LOCATION").then(|| "   ".to_string()));
         assert!(c.default_location.is_none());
+    }
+
+    #[test]
+    fn units_default_to_metric_and_only_the_exact_word_imperial_switches_them() {
+        assert_eq!(Config::from_vars(empty).units, Units::Metric);
+        assert_eq!(
+            Config::from_vars(|k| (k == "OPEN_METEO_UNITS").then(|| "imperial".to_string())).units,
+            Units::Imperial
+        );
+        // A plausible-but-wrong value must not silently become imperial.
+        assert_eq!(
+            Config::from_vars(|k| (k == "OPEN_METEO_UNITS").then(|| "celsius".to_string())).units,
+            Units::Metric
+        );
+    }
+
+    #[test]
+    fn an_empty_api_key_is_treated_as_unset() {
+        let c = Config::from_vars(|k| (k == "OPEN_METEO_API_KEY").then(|| "  ".to_string()));
+        assert!(c.api_key.is_none());
     }
 }

@@ -1,0 +1,27 @@
+{
+  "manifest_version": "0.1",
+  "name": "open-meteo-mcp",
+  "display_name": "Open-Meteo weather",
+  "version": "0.1.0",
+  "description": "Current conditions and a short forecast for a place, from Open-Meteo.",
+  "author": { "name": "MycorX" },
+  "license": "Apache-2.0",
+  "server": {
+    "type": "binary",
+    "entry_point": "bin/open-meteo-mcp",
+    "mcp_config": {
+      "command": "${__dirname}/bin/open-meteo-mcp",
+      "args": [],
+      "env": {},
+      "platform_overrides": {
+        "win32": { "command": "${__dirname}/bin/open-meteo-mcp.exe" }
+      }
+    }
+  },
+  "tools": [
+    {
+      "name": "get_weather",
+      "description": "Current conditions and a short forecast for a place."
+    }
+  ]
+}

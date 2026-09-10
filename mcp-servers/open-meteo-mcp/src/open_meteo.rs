@@ -2,7 +2,7 @@
 //!
 //! Every field name here was checked against a live response on 2026-09-10.
 
-use crate::config::Config;
+use crate::config::{Config, Units};
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize, Clone, PartialEq)]
@@ -105,6 +105,16 @@ impl Client {
         }
     }
 
+    /// Sent as a query parameter on both endpoints, and only when set.
+    /// The paid tier is API-identical to the free one, so this plus the two
+    /// URL variables is the whole of what switching to it requires.
+    fn key_param(&self) -> Vec<(&str, String)> {
+        match &self.config.api_key {
+            Some(key) => vec![("apikey", key.clone())],
+            None => vec![],
+        }
+    }
+
     pub async fn forecast(
         &self,
         latitude: f64,
@@ -114,7 +124,7 @@ impl Client {
     ) -> Result<Forecast, WeatherError> {
         // `hourly` is deliberately absent: 24 rows a speech model would read
         // aloud, for an answer two sentences already give.
-        let query = vec![
+        let mut query = vec![
             ("latitude", latitude.to_string()),
             ("longitude", longitude.to_string()),
             (
@@ -128,6 +138,12 @@ impl Client {
             ("forecast_days", days.to_string()),
             ("timezone", timezone.unwrap_or("auto").to_string()),
         ];
+        if self.config.units == Units::Imperial {
+            query.push(("temperature_unit", "fahrenheit".to_string()));
+            query.push(("wind_speed_unit", "mph".to_string()));
+            query.push(("precipitation_unit", "inch".to_string()));
+        }
+        query.extend(self.key_param());
 
         let response = self
             .http
@@ -154,12 +170,13 @@ impl Client {
     pub async fn geocode(&self, name: &str) -> Result<Place, WeatherError> {
         // count=1: the spec resolves a multi-match to the first hit and
         // names it, rather than asking the model to choose.
-        let query = vec![
+        let mut query = vec![
             ("name", name.to_string()),
             ("count", "1".to_string()),
             ("language", "en".to_string()),
             ("format", "json".to_string()),
         ];
+        query.extend(self.key_param());
 
         let response = self
             .http
@@ -194,11 +211,13 @@ mod tests {
 
     /// Points the client at the mock server. No test in this crate is ever
     /// allowed to reach the real api.open-meteo.com.
-    fn config(server: &MockServer) -> Config {
+    fn config(server: &MockServer, imperial: bool, key: Option<&str>) -> Config {
         let base = server.uri();
         Config::from_vars(move |k| match k {
             "OPEN_METEO_BASE_URL" => Some(format!("{base}/v1/forecast")),
             "OPEN_METEO_GEOCODING_URL" => Some(format!("{base}/v1/search")),
+            "OPEN_METEO_UNITS" if imperial => Some("imperial".to_string()),
+            "OPEN_METEO_API_KEY" => key.map(str::to_string),
             _ => None,
         })
     }
@@ -217,6 +236,47 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn imperial_units_reach_the_forecast_request() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/v1/forecast"))
+            .and(query_param("temperature_unit", "fahrenheit"))
+            .and(query_param("wind_speed_unit", "mph"))
+            .and(query_param("precipitation_unit", "inch"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(melbourne_forecast()))
+            .mount(&server)
+            .await;
+
+        Client::new(config(&server, true, None))
+            .forecast(28.08, -80.61, 1, None)
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn the_api_key_is_sent_when_set_and_absent_when_not() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/v1/search"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(melbourne_place()))
+            .mount(&server)
+            .await;
+
+        Client::new(config(&server, false, Some("k-123")))
+            .geocode("Melbourne")
+            .await
+            .unwrap();
+        Client::new(config(&server, false, None))
+            .geocode("Melbourne")
+            .await
+            .unwrap();
+
+        let requests = server.received_requests().await.unwrap();
+        assert!(requests[0].url.as_str().contains("apikey=k-123"));
+        assert!(!requests[1].url.as_str().contains("apikey"));
+    }
+
+    #[tokio::test]
     async fn a_forecast_is_parsed_and_no_hourly_block_is_ever_requested() {
         let server = MockServer::start().await;
         Mock::given(method("GET"))
@@ -225,7 +285,7 @@ mod tests {
             .mount(&server)
             .await;
 
-        let forecast = Client::new(config(&server))
+        let forecast = Client::new(config(&server, false, None))
             .forecast(-37.814, 144.9633, 3, Some("Australia/Melbourne"))
             .await
             .unwrap();
@@ -247,7 +307,7 @@ mod tests {
             .mount(&server)
             .await;
 
-        let err = Client::new(config(&server))
+        let err = Client::new(config(&server, false, None))
             .forecast(-37.8, 144.9, 3, None)
             .await
             .unwrap_err();
@@ -274,7 +334,7 @@ mod tests {
                 .timeout(Duration::from_millis(150))
                 .build()
                 .unwrap(),
-            config: config(&server),
+            config: config(&server, false, None),
         };
         let err = client.forecast(-37.8, 144.9, 3, None).await.unwrap_err();
         assert!(matches!(err, WeatherError::Upstream(_)));
@@ -289,7 +349,7 @@ mod tests {
             .mount(&server)
             .await;
 
-        let err = Client::new(config(&server))
+        let err = Client::new(config(&server, false, None))
             .forecast(-37.8, 144.9, 3, None)
             .await
             .unwrap_err();
@@ -313,7 +373,7 @@ mod tests {
             .mount(&server)
             .await;
 
-        let place = Client::new(config(&server))
+        let place = Client::new(config(&server, false, None))
             .geocode("Melbourne")
             .await
             .unwrap();
@@ -334,7 +394,7 @@ mod tests {
             .mount(&server)
             .await;
 
-        let err = Client::new(config(&server))
+        let err = Client::new(config(&server, false, None))
             .geocode("zzzqqq")
             .await
             .unwrap_err();
@@ -356,7 +416,7 @@ mod tests {
             .mount(&server)
             .await;
 
-        let place = Client::new(config(&server))
+        let place = Client::new(config(&server, false, None))
             .geocode("Singapore")
             .await
             .unwrap();

@@ -58,11 +58,26 @@ pub fn resolve(
         (None, None) => match location.map(str::trim).filter(|s| !s.is_empty()) {
             Some(name) => Resolution::Name(name.to_string()),
             None => match config.default_location.as_deref() {
-                Some(default) => Resolution::Name(default.trim().to_string()),
+                Some(default) => parse_default(default),
                 None => Resolution::Ask,
             },
         },
     }
+}
+
+/// The spec lets the default be "a place name or `lat,lon`". Both halves
+/// must parse as numbers, so "Melbourne, Australia" stays a name.
+fn parse_default(value: &str) -> Resolution {
+    if let Some((lat, lon)) = value.split_once(',')
+        && let (Ok(latitude), Ok(longitude)) =
+            (lat.trim().parse::<f64>(), lon.trim().parse::<f64>())
+    {
+        return Resolution::Coords {
+            latitude,
+            longitude,
+        };
+    }
+    Resolution::Name(value.trim().to_string())
 }
 
 #[cfg(test)]
@@ -123,6 +138,25 @@ mod tests {
         assert_eq!(
             resolve(None, None, Some(144.9), &config(None)),
             Resolution::MissingHalf("latitude")
+        );
+    }
+
+    #[test]
+    fn a_default_written_as_lat_lon_is_used_as_coordinates() {
+        assert_eq!(
+            resolve(None, None, None, &config(Some("-37.814, 144.9633"))),
+            Resolution::Coords {
+                latitude: -37.814,
+                longitude: 144.9633
+            }
+        );
+    }
+
+    #[test]
+    fn a_default_that_merely_contains_a_comma_is_still_a_place_name() {
+        assert_eq!(
+            resolve(None, None, None, &config(Some("Melbourne, Australia"))),
+            Resolution::Name("Melbourne, Australia".into())
         );
     }
 

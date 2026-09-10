@@ -6,6 +6,9 @@
 target/
 **/*.rs.bk
 
+# `.mcpb` packaging output — build artifact, not source.
+mcp-servers/open-meteo-mcp/dist/
+
 # Python — scripts/validate_marketplace.py and anything that joins it.
 __pycache__/
 *.py[cod]
