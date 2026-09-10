@@ -12,4 +12,7 @@ plugin format in [`../claude-plugins/`](../claude-plugins).
 2. Add a row to the table in the root [`README.md`](../README.md).
 
 No shared manifest format is imposed here — each server documents its own
-install and run instructions.
+install and run instructions. [`open-meteo-mcp`](open-meteo-mcp) is the
+worked example: a Rust binary with a `.mcpb` manifest, a packaging script,
+and mocked-HTTP tests. Nothing in this directory is built or tested by CI —
+run the server's own checks before pushing.

@@ -40,14 +40,14 @@ have no shared manifest format to check).
 3. Add a row to the plugin table in `README.md`.
 4. Run `python3 scripts/validate_marketplace.py` before pushing.
 
-A plugin with its own release cadence can add a `CHANGELOG.md` under
-`claude-plugins/<name>/` once the root `CHANGELOG.md` gets too crowded to
-track it — not needed while the marketplace is small.
+Bump the plugin's `version` in its own `plugin.json` when you change its
+behaviour. That version is the only release signal this repo has: there is
+no release branch and no changelog, so merging to `main` is what ships it.
 
 ## Validation
 
-A GitHub Actions workflow (`.github/workflows/validate.yml`) runs on every PR
-and on pushes to `main`. It runs `scripts/validate_marketplace.py`, which
+A GitHub Actions workflow ([`.github/workflows/validate.yaml`](.github/workflows/validate.yaml))
+runs on every PR and on pushes to `main`. It runs `scripts/validate_marketplace.py`, which
 checks that:
 
 - `.claude-plugin/marketplace.json` parses as JSON and carries `name`,
@@ -70,5 +70,6 @@ python3 scripts/validate_marketplace.py
 ## Ground rules
 
 - Match the existing style and structure of the code you're touching.
-- Update the relevant README and `CHANGELOG.md` when your change is user-facing.
+- Update the relevant `README.md` when your change is user-facing — the
+  category's own and, for a new asset, the table in the root one.
 - Be respectful and constructive — assume good faith on all sides.

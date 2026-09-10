@@ -7,5 +7,7 @@
 ## Checklist
 
 - [ ] Commits follow [Conventional Commits](https://www.conventionalcommits.org/)
-- [ ] `README.md` / `CHANGELOG.md` updated if the change is user-facing
-- [ ] `python3 scripts/validate_marketplace.py` passes
+- [ ] `README.md` updated if the change is user-facing
+- [ ] Claude Code plugin change: `python3 scripts/validate_marketplace.py` passes
+- [ ] MCP server change: `cargo test`, `cargo fmt --check` and
+      `cargo clippy --all-targets -- -D warnings` pass in that server's directory
