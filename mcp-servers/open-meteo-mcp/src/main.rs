@@ -1,4 +1,7 @@
 mod config;
+mod location;
+mod open_meteo;
+mod render;
 mod server;
 
 use rmcp::ServiceExt;

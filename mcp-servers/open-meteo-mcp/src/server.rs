@@ -1,6 +1,9 @@
 //! The MCP surface: one tool, `get_weather`.
 
 use crate::config::Config;
+use crate::location::{Resolution, clamp_days, resolve};
+use crate::open_meteo::Client;
+use crate::render::render;
 use rmcp::handler::server::wrapper::Parameters;
 use rmcp::model::{CallToolResult, ContentBlock};
 use rmcp::{ErrorData, ServerHandler, tool, tool_handler, tool_router};
@@ -47,10 +50,50 @@ Give a place name, or a latitude/longitude pair.")]
         &self,
         Parameters(args): Parameters<GetWeatherArgs>,
     ) -> Result<CallToolResult, ErrorData> {
-        // Task 2 replaces this with the full resolution order. Until then the
-        // only honest answer is the one the spec's tier 3 asks for.
-        let _ = (&args, &self.config);
-        Ok(error_text(ASK_USER))
+        let clamped = clamp_days(args.days);
+        let client = Client::new(self.config.clone());
+
+        let (place, latitude, longitude) = match resolve(
+            args.location.as_deref(),
+            args.latitude,
+            args.longitude,
+            &self.config,
+        ) {
+            Resolution::Ask => return Ok(error_text(ASK_USER)),
+            Resolution::MissingHalf(missing) => {
+                return Ok(error_text(format!(
+                    "A coordinate pair needs both halves — {missing} is missing. \
+Give both latitude and longitude, or a place name instead."
+                )));
+            }
+            // Task 3 replaces this arm with a geocoding call.
+            Resolution::Name(_) => {
+                return Ok(error_text(
+                    "This server cannot look up a place by name yet. \
+Give latitude and longitude instead.",
+                ));
+            }
+            Resolution::Coords {
+                latitude,
+                longitude,
+            } => (
+                format!("{latitude:.4}, {longitude:.4}"),
+                latitude,
+                longitude,
+            ),
+        };
+
+        match client
+            .forecast(latitude, longitude, clamped.days, None)
+            .await
+        {
+            Ok(forecast) => Ok(CallToolResult::success(vec![ContentBlock::text(render(
+                &place,
+                &forecast,
+                clamped.note.as_deref(),
+            ))])),
+            Err(e) => Ok(error_text(e.to_string())),
+        }
     }
 }
 
@@ -114,5 +157,33 @@ mod tests {
         let result = server(None).get_weather(Parameters(args())).await.unwrap();
         assert_eq!(result.is_error, Some(true));
         assert_eq!(text_of(&result), ASK_USER);
+    }
+
+    #[tokio::test]
+    async fn half_a_coordinate_pair_is_an_error_result_naming_the_missing_half() {
+        let mut a = args();
+        a.latitude = Some(-37.8);
+        let result = server(None).get_weather(Parameters(a)).await.unwrap();
+        assert_eq!(result.is_error, Some(true));
+        assert!(
+            text_of(&result).contains("longitude is missing"),
+            "{}",
+            text_of(&result)
+        );
+    }
+
+    /// Replaced in Task 3, when geocoding lands. Until then the tool must
+    /// say what it cannot do rather than answering about the wrong place.
+    #[tokio::test]
+    async fn a_place_name_is_refused_until_geocoding_lands() {
+        let mut a = args();
+        a.location = Some("Melbourne".into());
+        let result = server(None).get_weather(Parameters(a)).await.unwrap();
+        assert_eq!(result.is_error, Some(true));
+        assert!(
+            text_of(&result).contains("latitude and longitude"),
+            "{}",
+            text_of(&result)
+        );
     }
 }
