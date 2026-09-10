@@ -67,8 +67,10 @@ in Melbourne. Set a city or coordinates, or leave it unset.
 
 ## Install
 
-**From a bundle.** Download the `.mcpb` for your platform and install it
-with any MCP client that accepts bundles.
+**From a bundle.** No prebuilt bundles are published yet. Build one for your
+platform with [`./scripts/package-mcpb.sh`](scripts/package-mcpb.sh) (see
+[Building a bundle](#building-a-bundle) below) and install the resulting
+`.mcpb` with any MCP client that accepts bundles.
 
 **From source.**
 

@@ -1,7 +1,7 @@
 # ai-agent-assets
 
 A growing collection of assets for AI-agent-assisted development: Claude Code
-plugins today, with room for MCP servers and skills for other agents as they
+plugins and MCP servers today, with room for skills for other agents as they
 show up.
 
 ## Claude Code plugins
