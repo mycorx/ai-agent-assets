@@ -27,11 +27,46 @@ pub struct Forecast {
     pub daily: Daily,
 }
 
+/// One geocoding hit. `country`, `admin1` and `timezone` are optional
+/// because the API genuinely omits them for some places — a city-state has
+/// no admin region.
+#[derive(Debug, Deserialize, Clone)]
+pub struct Place {
+    pub name: String,
+    pub latitude: f64,
+    pub longitude: f64,
+    pub country: Option<String>,
+    pub admin1: Option<String>,
+    pub timezone: Option<String>,
+}
+
+impl Place {
+    /// "Melbourne, Victoria, Australia" — enough for a listener to hear
+    /// that it picked the wrong Melbourne.
+    pub fn label(&self) -> String {
+        [
+            Some(self.name.clone()),
+            self.admin1.clone(),
+            self.country.clone(),
+        ]
+        .into_iter()
+        .flatten()
+        .collect::<Vec<_>>()
+        .join(", ")
+    }
+}
+
+/// `results` is `Option` rather than a defaulted `Vec` because the field is
+/// genuinely absent on a no-match, and the type should say what the wire
+/// actually does.
+#[derive(Debug, Deserialize)]
+struct GeocodeResponse {
+    #[serde(default)]
+    results: Option<Vec<Place>>,
+}
+
 #[derive(Debug)]
 pub enum WeatherError {
-    // Temporary: no caller constructs this variant yet, until Task 3 wires
-    // geocoding and returns it when no place matches the query.
-    #[allow(dead_code)]
     NoMatch(String),
     Upstream(String),
 }
@@ -115,6 +150,38 @@ impl Client {
             .await
             .map_err(|e| WeatherError::Upstream(e.to_string()))
     }
+
+    pub async fn geocode(&self, name: &str) -> Result<Place, WeatherError> {
+        // count=1: the spec resolves a multi-match to the first hit and
+        // names it, rather than asking the model to choose.
+        let query = vec![
+            ("name", name.to_string()),
+            ("count", "1".to_string()),
+            ("language", "en".to_string()),
+            ("format", "json".to_string()),
+        ];
+
+        let response = self
+            .http
+            .get(&self.config.geocoding_url)
+            .query(&query)
+            .send()
+            .await
+            .map_err(|e| WeatherError::Upstream(e.to_string()))?;
+        if !response.status().is_success() {
+            return Err(WeatherError::Upstream(format!(
+                "HTTP {}",
+                response.status().as_u16()
+            )));
+        }
+        let body: GeocodeResponse = response
+            .json()
+            .await
+            .map_err(|e| WeatherError::Upstream(e.to_string()))?;
+        body.results
+            .and_then(|r| r.into_iter().next())
+            .ok_or_else(|| WeatherError::NoMatch(name.to_string()))
+    }
 }
 
 #[cfg(test)]
@@ -122,7 +189,7 @@ mod tests {
     use super::*;
     use serde_json::json;
     use std::time::Duration;
-    use wiremock::matchers::{method, path};
+    use wiremock::matchers::{method, path, query_param};
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
     /// Points the client at the mock server. No test in this crate is ever
@@ -227,5 +294,72 @@ mod tests {
             .await
             .unwrap_err();
         assert!(matches!(err, WeatherError::Upstream(_)));
+    }
+
+    fn melbourne_place() -> serde_json::Value {
+        json!({"results": [{
+            "name": "Melbourne", "latitude": -37.814, "longitude": 144.96332,
+            "country": "Australia", "admin1": "Victoria", "timezone": "Australia/Melbourne"
+        }]})
+    }
+
+    #[tokio::test]
+    async fn a_matched_name_yields_a_place_labelled_with_region_and_country() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/v1/search"))
+            .and(query_param("name", "Melbourne"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(melbourne_place()))
+            .mount(&server)
+            .await;
+
+        let place = Client::new(config(&server))
+            .geocode("Melbourne")
+            .await
+            .unwrap();
+        assert_eq!(place.label(), "Melbourne, Victoria, Australia");
+        assert_eq!(place.timezone.as_deref(), Some("Australia/Melbourne"));
+        assert_eq!(place.latitude, -37.814);
+    }
+
+    #[tokio::test]
+    async fn a_name_that_matches_nothing_is_an_error_quoting_the_input() {
+        let server = MockServer::start().await;
+        // The live API omits `results` entirely; it does not return [].
+        Mock::given(method("GET"))
+            .and(path("/v1/search"))
+            .respond_with(
+                ResponseTemplate::new(200).set_body_json(json!({"generationtime_ms": 0.5})),
+            )
+            .mount(&server)
+            .await;
+
+        let err = Client::new(config(&server))
+            .geocode("zzzqqq")
+            .await
+            .unwrap_err();
+        assert!(matches!(err, WeatherError::NoMatch(ref q) if q == "zzzqqq"));
+        assert!(err.to_string().contains("\"zzzqqq\""), "{err}");
+    }
+
+    #[tokio::test]
+    async fn a_place_missing_its_admin_region_is_still_labelled() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/v1/search"))
+            .respond_with(
+                ResponseTemplate::new(200).set_body_json(json!({"results": [{
+                    "name": "Singapore", "latitude": 1.28967, "longitude": 103.85007,
+                    "country": "Singapore", "timezone": "Asia/Singapore"
+                }]})),
+            )
+            .mount(&server)
+            .await;
+
+        let place = Client::new(config(&server))
+            .geocode("Singapore")
+            .await
+            .unwrap();
+        assert_eq!(place.label(), "Singapore, Singapore");
     }
 }

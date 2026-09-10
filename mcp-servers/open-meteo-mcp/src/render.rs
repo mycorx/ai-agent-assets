@@ -1,6 +1,7 @@
 //! Turning a forecast into one short paragraph a speech model can say.
 
 use crate::open_meteo::Forecast;
+use chrono::{Datelike, NaiveDate};
 
 pub const ATTRIBUTION: &str = "Data by Open-Meteo.com, CC-BY 4.0.";
 
@@ -28,6 +29,33 @@ pub fn describe_code(code: i64) -> &'static str {
     }
 }
 
+/// `Weekday::to_string()` renders "Sat", which a speech model reads aloud
+/// as the abbreviation. Spelled out on purpose.
+fn weekday_name(day: chrono::Weekday) -> &'static str {
+    use chrono::Weekday::*;
+    match day {
+        Mon => "Monday",
+        Tue => "Tuesday",
+        Wed => "Wednesday",
+        Thu => "Thursday",
+        Fri => "Friday",
+        Sat => "Saturday",
+        Sun => "Sunday",
+    }
+}
+
+/// Falls back to the ISO date rather than failing: an unparseable date is
+/// still worth speaking, and this is a forecast, not a parser.
+fn day_label(iso: &str, index: usize) -> String {
+    match index {
+        0 => "Today".to_string(),
+        1 => "Tomorrow".to_string(),
+        _ => NaiveDate::parse_from_str(iso, "%Y-%m-%d")
+            .map(|d| weekday_name(d.weekday()).to_string())
+            .unwrap_or_else(|_| iso.to_string()),
+    }
+}
+
 pub fn render(place: &str, forecast: &Forecast, clamp_note: Option<&str>) -> String {
     let mut out = format!(
         "{place} — currently {:.0}°C, {}, wind {:.0} km/h.",
@@ -36,7 +64,22 @@ pub fn render(place: &str, forecast: &Forecast, clamp_note: Option<&str>) -> Str
         forecast.current.wind_speed_10m,
     );
 
-    // Task 3 appends the daily lines here.
+    let days = &forecast.daily;
+    for i in 0..days.time.len() {
+        let precip = days.precipitation_sum.get(i).copied().unwrap_or(0.0);
+        // The amount is only worth saying when there is any.
+        let weather = if precip > 0.0 {
+            format!(", {} {precip:.0}mm", describe_code(days.weather_code[i]))
+        } else {
+            format!(", {}", describe_code(days.weather_code[i]))
+        };
+        out.push_str(&format!(
+            " {} {:.0}-{:.0}°C{weather}.",
+            day_label(&days.time[i], i),
+            days.temperature_2m_min[i],
+            days.temperature_2m_max[i],
+        ));
+    }
 
     if let Some(note) = clamp_note {
         out.push(' ');
@@ -101,5 +144,23 @@ mod tests {
     #[test]
     fn an_unknown_wmo_code_still_produces_a_word() {
         assert_eq!(describe_code(4242), "unsettled");
+    }
+
+    #[test]
+    fn a_rendered_forecast_reads_as_one_speakable_paragraph() {
+        let out = render("Melbourne, Victoria, Australia", &forecast(), None);
+        assert_eq!(
+            out,
+            "Melbourne, Victoria, Australia — currently 14°C, overcast, wind 19 km/h. \
+Today 11-17°C, rain 4mm. Tomorrow 9-16°C, showers. Saturday 10-19°C, clear. \
+Data by Open-Meteo.com, CC-BY 4.0."
+        );
+    }
+
+    #[test]
+    fn no_hourly_rows_appear_in_the_output() {
+        let out = render("X", &forecast(), None);
+        // Three daily sentences, one current sentence, one attribution.
+        assert_eq!(out.matches("°C").count(), 4);
     }
 }

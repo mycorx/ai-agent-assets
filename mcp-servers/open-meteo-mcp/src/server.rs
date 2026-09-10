@@ -53,7 +53,7 @@ Give a place name, or a latitude/longitude pair.")]
         let clamped = clamp_days(args.days);
         let client = Client::new(self.config.clone());
 
-        let (place, latitude, longitude) = match resolve(
+        let (place, latitude, longitude, timezone) = match resolve(
             args.location.as_deref(),
             args.latitude,
             args.longitude,
@@ -66,13 +66,6 @@ Give a place name, or a latitude/longitude pair.")]
 Give both latitude and longitude, or a place name instead."
                 )));
             }
-            // Task 3 replaces this arm with a geocoding call.
-            Resolution::Name(_) => {
-                return Ok(error_text(
-                    "This server cannot look up a place by name yet. \
-Give latitude and longitude instead.",
-                ));
-            }
             Resolution::Coords {
                 latitude,
                 longitude,
@@ -80,11 +73,21 @@ Give latitude and longitude instead.",
                 format!("{latitude:.4}, {longitude:.4}"),
                 latitude,
                 longitude,
+                None,
             ),
+            Resolution::Name(name) => match client.geocode(&name).await {
+                Ok(found) => (
+                    found.label(),
+                    found.latitude,
+                    found.longitude,
+                    found.timezone.clone(),
+                ),
+                Err(e) => return Ok(error_text(e.to_string())),
+            },
         };
 
         match client
-            .forecast(latitude, longitude, clamped.days, None)
+            .forecast(latitude, longitude, clamped.days, timezone.as_deref())
             .await
         {
             Ok(forecast) => Ok(CallToolResult::success(vec![ContentBlock::text(render(
@@ -172,18 +175,57 @@ mod tests {
         );
     }
 
-    /// Replaced in Task 3, when geocoding lands. Until then the tool must
-    /// say what it cannot do rather than answering about the wrong place.
+    /// The one server test that needs a network seam, so it builds its own
+    /// config rather than using `server()`.
     #[tokio::test]
-    async fn a_place_name_is_refused_until_geocoding_lands() {
+    async fn a_named_place_is_geocoded_and_the_answer_says_which_place_it_picked() {
+        use wiremock::matchers::{method, path};
+        use wiremock::{Mock, MockServer, ResponseTemplate};
+
+        let mock = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/v1/search"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "results": [{"name": "Melbourne", "latitude": -37.814, "longitude": 144.96332,
+                             "country": "Australia", "admin1": "Victoria",
+                             "timezone": "Australia/Melbourne"}]
+            })))
+            .mount(&mock)
+            .await;
+        Mock::given(method("GET"))
+            .and(path("/v1/forecast"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "current": {"temperature_2m": 14.3, "weather_code": 3, "wind_speed_10m": 19.4},
+                "daily": {"time": ["2026-09-10"], "weather_code": [3],
+                          "temperature_2m_max": [17.0], "temperature_2m_min": [11.0],
+                          "precipitation_sum": [0.0]}
+            })))
+            .mount(&mock)
+            .await;
+
+        let base = mock.uri();
+        let server = WeatherServer::new(Config::from_vars(move |k| match k {
+            "OPEN_METEO_BASE_URL" => Some(format!("{base}/v1/forecast")),
+            "OPEN_METEO_GEOCODING_URL" => Some(format!("{base}/v1/search")),
+            _ => None,
+        }));
+
         let mut a = args();
         a.location = Some("Melbourne".into());
-        let result = server(None).get_weather(Parameters(a)).await.unwrap();
-        assert_eq!(result.is_error, Some(true));
+        let result = server.get_weather(Parameters(a)).await.unwrap();
+        assert_eq!(result.is_error, Some(false));
         assert!(
-            text_of(&result).contains("latitude and longitude"),
+            text_of(&result).starts_with("Melbourne, Victoria, Australia — "),
             "{}",
             text_of(&result)
+        );
+
+        // The geocoded IANA zone must reach the forecast call, or "Today"
+        // means today here rather than today there.
+        let forecast_url = mock.received_requests().await.unwrap()[1].url.to_string();
+        assert!(
+            forecast_url.contains("Australia%2FMelbourne"),
+            "{forecast_url}"
         );
     }
 }
