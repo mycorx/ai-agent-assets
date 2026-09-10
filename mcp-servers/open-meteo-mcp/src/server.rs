@@ -16,9 +16,6 @@ pub const ASK_USER: &str = "No default location is configured. Ask the user whic
 they want the weather for, then call get_weather again with it.";
 
 /// Doc comments on these fields become the tool's JSON Schema descriptions.
-// Temporary: fields are only taken by reference in the Task-1 stub
-// `get_weather`, never field-accessed, until Task 2 reads them.
-#[allow(dead_code)]
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct GetWeatherArgs {
     /// Place name, e.g. "Melbourne" or "Melbourne, Australia".
