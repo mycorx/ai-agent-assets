@@ -93,6 +93,7 @@ Give both latitude and longitude, or a place name instead."
             Ok(forecast) => Ok(CallToolResult::success(vec![ContentBlock::text(render(
                 &place,
                 &forecast,
+                &self.config.units,
                 clamped.note.as_deref(),
             ))])),
             Err(e) => Ok(error_text(e.to_string())),
