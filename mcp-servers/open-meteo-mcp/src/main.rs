@@ -24,6 +24,24 @@ async fn main() -> anyhow::Result<()> {
 
 #[cfg(test)]
 mod manifest_tests {
+    const SCRIPT_EXTENSIONS: &[&str] = &[
+        "py", "js", "mjs", "cjs", "ts", "rb", "sh", "bash", "ps1", "bat", "cmd", "php", "pl",
+    ];
+
+    /// Mirrors `validate.rs`'s own case-insensitive extension check: a
+    /// manifest naming `bin/server.PY` must be caught here, not at install.
+    fn ends_in_script_extension(command: &str) -> bool {
+        let ext = command.rsplit_once('.').map(|(_, e)| e).unwrap_or("");
+        SCRIPT_EXTENSIONS.contains(&ext.to_ascii_lowercase().as_str())
+    }
+
+    #[test]
+    fn detects_uppercase_script_extensions_like_uias_validator() {
+        assert!(ends_in_script_extension("${__dirname}/bin/server.PY"));
+        assert!(ends_in_script_extension("${__dirname}/bin/server.Sh"));
+        assert!(!ends_in_script_extension("${__dirname}/bin/open-meteo-mcp"));
+    }
+
     /// The four checks `uia` applies to a bundle, asserted against the
     /// manifest this repo ships, so a careless edit fails here rather than
     /// at install time on somebody's machine.
@@ -41,9 +59,6 @@ mod manifest_tests {
             "server names prefix tool names: {name}"
         );
 
-        const SCRIPT_EXTENSIONS: &[&str] = &[
-            "py", "js", "mjs", "cjs", "ts", "rb", "sh", "bash", "ps1", "bat", "cmd", "php", "pl",
-        ];
         let mut commands = vec![m["server"]["mcp_config"]["command"].as_str().unwrap()];
         for (_, over) in m["server"]["mcp_config"]["platform_overrides"]
             .as_object()
@@ -61,9 +76,8 @@ mod manifest_tests {
                 !command.contains(".."),
                 "must not escape the bundle: {command}"
             );
-            let ext = command.rsplit_once('.').map(|(_, e)| e).unwrap_or("");
             assert!(
-                !SCRIPT_EXTENSIONS.contains(&ext),
+                !ends_in_script_extension(command),
                 "{command} ends in a script extension"
             );
         }
