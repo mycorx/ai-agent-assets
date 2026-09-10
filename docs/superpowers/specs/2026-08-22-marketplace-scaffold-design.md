@@ -1,5 +1,30 @@
 # ai-agent-assets: marketplace scaffold design
 
+> **SUPERSEDED — historical record only.** This is what was designed on
+> 2026-08-22, not how the repo works now. It shipped, then the repo outgrew
+> it. Read the current docs instead: [`README.md`](../../../README.md),
+> [`CONTRIBUTING.md`](../../../CONTRIBUTING.md), [`CLAUDE.md`](../../../CLAUDE.md).
+>
+> What diverged since:
+>
+> - **`plugins/` is `claude-plugins/`.** The repo now holds three sibling
+>   categories — `claude-plugins/`, `mcp-servers/`, `agent-skills/` — where
+>   this spec assumed a single plugin directory. Every `plugins/<name>` path
+>   and `./plugins/<name>` source below is wrong by that rename.
+> - **Workflows are `.yaml`, not `.yml`** — `validate.yaml`, `gitleaks.yaml`.
+> - **`dependabot.yml` was never added.** Dependency updates run through
+>   Renovate ([`.github/renovate.json5`](../../../.github/renovate.json5)).
+> - **`CHANGELOG.md` was never created**, so the CHANGELOG section below
+>   describes a file that does not exist. A plugin's `version` in its own
+>   `plugin.json` is the only release signal; merging to `main` ships it.
+> - **The marketplace `description` changed** — it catalogs plugins only,
+>   not "skills and plugins".
+>
+> Still accurate: the distribution model (no release branch, sources resolved
+> off `main`), the `source`-must-be-a-git-marketplace constraint, and what
+> `scripts/validate_marketplace.py` checks.
+
+
 ## Goal
 
 Turn `ai-agent-assets` from a loose folder of skills into a working Claude
