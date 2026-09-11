@@ -35,9 +35,10 @@ under `claude-plugins/<name>/`, versioned independently in its own
 ## MCP servers
 
 `mcp-servers/<name>/` holds real, buildable servers — `open-meteo-mcp` is a
-Rust binary, and is the worked example for anything added here. CI does not
-build or test them, so their gates are yours to run from the server's own
-directory before pushing:
+Rust binary, and is the worked example for anything added here.
+[`mcp-servers.yaml`](.github/workflows/mcp-servers.yaml) runs these gates in
+CI for every server with a `Cargo.toml`, path-filtered to `mcp-servers/**`.
+Run them from the server's own directory before pushing:
 
 ```
 cargo test
