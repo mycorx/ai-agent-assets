@@ -44,6 +44,9 @@ claude-plugins/<name>/
   skills/, commands/, hooks/…       # the plugin's actual content
 mcp-servers/<name>/                 # standalone MCP servers, agent-agnostic
 agent-skills/<agent>/<name>/        # skills for agents other than Claude Code
+scripts/validate_marketplace.py     # the plugin-category validator CI runs
+docs/superpowers/                   # design specs and implementation plans
+.github/workflows/                  # validate + mcp-servers + gitleaks
 ```
 
 Each category is self-contained and versioned independently. See
@@ -53,12 +56,20 @@ Each category is self-contained and versioned independently. See
 
 `scripts/validate_marketplace.py` checks that `marketplace.json` and every
 cataloged Claude Code plugin's manifest, skill/command frontmatter, and README
-links are well-formed. It runs in CI on every push and PR; run it locally
-with:
+links are well-formed. [`validate.yaml`](.github/workflows/validate.yaml) runs
+it on every PR and on pushes to `main`; run it locally with:
 
 ```
 python3 scripts/validate_marketplace.py
 ```
+
+It covers the Claude Code plugin category only — `agent-skills/` has no shared
+manifest format to check, and MCP servers have their own job:
+[`mcp-servers.yaml`](.github/workflows/mcp-servers.yaml) runs `cargo fmt
+--check`, `cargo clippy -D warnings` and `cargo test` for every server under
+`mcp-servers/` with a `Cargo.toml`, on PRs and pushes to `main` that touch
+that path. [`gitleaks.yaml`](.github/workflows/gitleaks.yaml) scans every push
+and PR for secrets.
 
 ## License
 
