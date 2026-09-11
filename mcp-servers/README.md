@@ -14,5 +14,8 @@ plugin format in [`../claude-plugins/`](../claude-plugins).
 No shared manifest format is imposed here — each server documents its own
 install and run instructions. [`open-meteo-mcp`](open-meteo-mcp) is the
 worked example: a Rust binary with a `.mcpb` manifest, a packaging script,
-and mocked-HTTP tests. Nothing in this directory is built or tested by CI —
-run the server's own checks before pushing.
+and mocked-HTTP tests. A server with a `Cargo.toml` is picked up
+automatically by [`mcp-servers.yaml`](../.github/workflows/mcp-servers.yaml),
+which runs `cargo fmt --check`, `cargo clippy -D warnings` and `cargo test`
+for it; run those locally before pushing. A server in another language needs
+its own CI job.

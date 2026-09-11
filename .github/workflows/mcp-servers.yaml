@@ -1,0 +1,69 @@
+name: MCP servers
+
+# Path-filtered on purpose: the plugin and skill categories carry no Rust,
+# and this job is the slowest thing in CI. Touching this workflow re-runs it.
+on:
+  pull_request:
+    paths:
+      - "mcp-servers/**"
+      - ".github/workflows/mcp-servers.yaml"
+  push:
+    branches: [main]
+    paths:
+      - "mcp-servers/**"
+      - ".github/workflows/mcp-servers.yaml"
+
+permissions:
+  contents: read
+
+jobs:
+  # Every server under mcp-servers/ with a Cargo.toml, found rather than
+  # listed, so a second server is covered the day it lands.
+  discover:
+    runs-on: ubuntu-latest
+    outputs:
+      servers: ${{ steps.find.outputs.servers }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - id: find
+        run: |
+          servers=$(find mcp-servers -mindepth 2 -maxdepth 2 -name Cargo.toml -printf '%h\n' \
+            | sort | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          echo "servers=$servers" >> "$GITHUB_OUTPUT"
+          echo "matrix: $servers"
+
+  cargo:
+    needs: discover
+    if: needs.discover.outputs.servers != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        server: ${{ fromJSON(needs.discover.outputs.servers) }}
+    defaults:
+      run:
+        working-directory: ${{ matrix.server }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Install toolchain
+        run: |
+          rustup update --no-self-update stable
+          rustup default stable
+          rustup component add rustfmt clippy
+          rustc --version && cargo --version
+
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            ${{ matrix.server }}/target
+          key: cargo-${{ runner.os }}-${{ matrix.server }}-${{ hashFiles(format('{0}/Cargo.lock', matrix.server)) }}
+          restore-keys: |
+            cargo-${{ runner.os }}-${{ matrix.server }}-
+
+      - run: cargo fmt --check
+      - run: cargo clippy --all-targets -- -D warnings
+      - run: cargo test
