@@ -24,7 +24,7 @@ jobs:
     outputs:
       servers: ${{ steps.find.outputs.servers }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - id: find
         run: |
           servers=$(find mcp-servers -mindepth 2 -maxdepth 2 -name Cargo.toml -printf '%h\n' \
@@ -44,7 +44,7 @@ jobs:
       run:
         working-directory: ${{ matrix.server }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Install toolchain
         run: |
